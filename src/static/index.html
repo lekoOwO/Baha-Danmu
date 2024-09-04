@@ -341,7 +341,15 @@
         const response = await fetch('/api/ls?' + new URLSearchParams({
           path: toRaw(this.path)
         }))
-        this.pathFiles = await response.json();
+        this.pathFiles = (await response.json()).sort((a, b) => {
+          if (a.is_dir && !b.is_dir) {
+            return -1;
+          } else if (!a.is_dir && b.is_dir) {
+            return 1;
+          } else {
+            return a.path.localeCompare(b.path);
+          }
+        });;
       },
 
       gotoPath(path) {

@@ -1,0 +1,6 @@
+.vscode/
+.env
+dev_data/
+__pycache__/
+.python-version
+docker-compose.yml

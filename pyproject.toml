@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "baha-danmu"
+version = "0.1.0"
+description = ""
+authors = ["Leko <leko@leko.moe>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = {extras = ["all"], version = "^0.112.2"}
+google-generativeai = "^0.7.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

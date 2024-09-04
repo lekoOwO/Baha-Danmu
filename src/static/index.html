@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <!-- 核心：Tocas UI -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocas/5.0.1/tocas.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tocas/5.0.1/tocas.min.js"></script>
+
+  <!-- 字體：Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- 啟用：響應式設計 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script type="importmap">
+  {
+    "imports": {
+    "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+    }
+  }
+  </script>
+  <style>
+  #recaptcha {
+    display: inline-block;
+  }
+
+  .hide {
+    display: none;
+  }
+
+  [v-cloak] {
+    display: none;
+  }
+  </style>
+</head>
+
+<body>
+  <div class="ts-content is-tertiary is-fitted">
+    <div class="ts-container">
+      <div class="ts-grid is-middle-aligned">
+        <div class="column is-fluid">
+          <div class="ts-tab">
+          <a href="#" class="item is-not-minimal">Leko Toolbox</a>
+          <a href="#!" class="item is-active">
+            <span class="ts-icon is-comments-icon"></span>
+            動畫瘋彈幕下載
+          </a>
+          </div>
+        </div>
+        <div class="column"></div>
+        <div class="column"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ts-divider"></div>
+
+  <div class="ts-content is-tertiary is-fitted is-vertically-padded">
+    <div class="ts-container is-narrow has-vertically-padded">
+      <div class="ts-header is-big is-heavy">動畫瘋彈幕下載</div>
+      <div class="ts-text is-secondary" data-lang="secondary-title">把動畫瘋的彈幕下載到 NAS 上</div>
+    </div>
+  </div>
+  <div class="ts-divider has-bottom-spaced-large"></div>
+  <div class="ts-container is-narrow" id="app">
+    <!-- App 區域 -->
+    <span>
+      <div class="ts-procedure">
+        <div class="item has-top-padded-large" :class='{
+          "is-active": step === (i+1),
+          "is-completed": step > (i+1)
+        }' v-for="(item, i) in steps">
+          <div class="content">
+            <div class="indicator"></div>
+            <div class="label">{{item}}</div>
+          </div>
+        </div>
+      </div>
+      <!-- Step 1 -->
+      <span v-show="step === 1" v-if="!!path">
+        <div class="ts-grid is-stacked has-top-padded">
+          <!-- <div class="column has-vertically-padded">
+            <div class="ts-input">
+              <input type="text" v-model="path">
+            </div>
+          </div> -->
+          <div class="column has-top-padded">
+            <div class="ts-box">
+              <table class="ts-table is-celled">
+                <thead>
+                  <tr>
+                    <th class="is-collapsed">
+                      <label class="ts-checkbox is-large">
+                        <input type="checkbox" v-model="isFileAllSelected" @click="toggleFileSelection">
+                      </label>
+                    </th>
+                    <th colspan="2">{{path}}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="path != initPath">
+                    <td class="is-collapsed"></td>
+                    <td>
+                      <span class="ts-icon is-end-spaced is-folder-icon"></span>
+                      <span>
+                        <span class="ts-text is-undecorated" @click="gotoPath(path.split('/').slice(0, -1).join('/'))">
+                          ..
+                        </span>
+                      </span>
+                    </td>
+                    <td class="is-collapsed"></td>
+                  </tr>
+                  <tr v-for="item in pathFiles" :class='{
+                    "is-active": selectedFiles.has(item.path)
+                  }'>
+                    <td class="is-collapsed">
+                      <label class="ts-checkbox is-large" v-if="!item.is_dir">
+                        <input type="checkbox" :value="item.path" v-model="selectedFiles"/>
+                      </label>
+                    </td>
+                    <td>
+                      <span v-if="item.is_dir">
+                        <span class="ts-text is-icon-link is-undecorated" @click="gotoPath(item.path)">
+                          <span class="ts-icon is-folder-icon"></span>
+                          {{ item.path.split('/').pop() }}
+                        </span>
+                      </span>
+                      <span v-else>
+                        <span class="ts-text is-icon-link">
+                          <span class="ts-icon is-file-icon"></span>
+                          {{ item.path.split('/').pop() }}
+                        </span>
+                      </span>
+
+                    </td>
+                    <td class="is-collapsed">
+                      <span v-if="!item.is_dir">{{ readableFileSize(item.size) }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="column has-top-padded">
+            <span>
+              <details class="ts-accordion" open>
+                <summary>已選擇檔案</summary>
+                <div class="ts-list is-unordered" style="margin-left: 2rem;">
+                  <div class="item" v-for="item in selectedFiles">{{item}}</div>
+                </div>
+              </details>
+            </span>
+          </div>
+          
+          <div class="column has-top-padded" v-show="selectedFiles.size > 0">
+            <div class="ts-divider has-bottom-padded"></div>
+            <div class="ts-button is-primary" @click="step = 2">下一步</div>
+          </div>
+        </div>
+      </span>
+      <!-- Step 1 End -->
+
+      <!-- Step 2 -->
+      <span v-show="step === 2" v-if="!!path">
+        <div class="ts-grid is-stacked has-top-padded">
+          <div class="column has-vertically-padded">
+            <div class="ts-input is-start-icon">
+              <span class="ts-icon is-link-icon"></span>
+              <input type="text" placeholder="請輸入動畫瘋 URL..." v-model="snUrl">
+            </div>
+          </div>
+          <div class="column">
+            <span>
+              <details class="ts-accordion" open>
+                <summary>已選擇檔案</summary>
+                <div class="ts-list is-unordered" style="margin-left: 2rem;">
+                  <div class="item" v-for="item in selectedFiles">{{item}}</div>
+                </div>
+              </details>
+            </span>
+          </div>
+          <div class="column has-top-padded" >
+            <div class="ts-divider has-bottom-padded"></div>
+            <div class="ts-wrap">
+              <div class="ts-button is-primary" @click="step = 1">上一步</div>
+              <div class="ts-button is-primary" @click="step = 3" v-show="episodeSn">下一步</div>
+            </div>
+          </div>
+        </div>
+      </span>
+      <!-- Step 2 End -->
+
+      <!-- Step 3 -->
+      <span v-show="step === 3 && isStep3Loading">
+        <div class="ts-app-center has-top-spaced-large">
+          <div class="content">
+            <div class="ts-wrap is-vertical is-center-aligned is-middle-aligned has-top-spaced-large">
+              <div class="ts-loading is-centered"></div>
+              <div class="ts-text">載入中...</div>
+            </div>
+          </div>
+        </div>
+      </span>
+      <span v-show="step === 3 && !isStep3Loading" v-if="!!path && !isStep3Loading">
+        <div class="ts-grid is-stacked has-top-padded">
+          <div class="column has-vertically-padded">
+            <div class="ts-text is-label">季</div>
+            <div class="ts-wrap has-top-padded">
+                <label class="ts-radio" v-for="_season in seasons">
+                    <input name="gender" type="radio" :value="_season" v-model="season" />
+                    {{ _season}}
+                </label>
+            </div>
+          </div>
+          <div class="column">
+            <div class="ts-box">
+              <table class="ts-table">
+                  <thead>
+                      <tr>
+                          <th>集數</th>
+                          <th>檔案名稱</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr v-for="file in selectedFiles">
+                          <td>
+                            <div class="ts-select">
+                              <select v-model="fileToEpisode[file]">
+                                  <option value=""></option>
+                                  <option :value="episode.videoSn" v-for="episode in episodes">
+                                    {{ episode.episode }}
+                                  </option>
+                              </select>
+                          </div>
+                          </td>
+                          <td>{{ file.split("/").pop() }}</td>
+                      </tr>
+                  </tbody>
+              </table>
+          </div>
+          </div>
+          <div class="column has-top-padded" >
+            <div class="ts-divider has-bottom-padded"></div>
+            <div class="ts-wrap">
+              <div class="ts-button is-primary" @click="step = 2">上一步</div>
+              <div class="ts-button is-primary" @click="downloadDanmu">下載</div>
+            </div>
+          </div>
+        </div>
+      </span>
+      <!-- Step 3 End -->
+      <!-- Step 4 -->
+      <span v-show="step === 4 && (downloadResult === null)">
+        <div class="ts-app-center has-top-spaced-large">
+          <div class="content">
+            <div class="ts-wrap is-vertical is-center-aligned is-middle-aligned has-top-spaced-large">
+              <div class="ts-loading is-centered"></div>
+              <div class="ts-text">下載中...</div>
+            </div>
+          </div>
+        </div>
+      </span>
+      <span v-show="step === 4 && downloadResult" v-if="downloadResult">
+        <div class="ts-grid is-stacked has-top-padded">
+          <div class="column has-vertically-padded">
+            <div class="ts-box">
+              <table class="ts-table">
+                <thead>
+                  <tr>
+                    <th>結果</th>
+                    <th>檔案名稱</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="result in downloadResult">
+                    <td>
+                      <span class="ts-text">{{ result.result ? "✅" : "❌"}}</span>
+                    </td>
+                    <td><span class="ts-text" :class='{
+                      "is-negative": !result.result
+                      }'>{{ result.video_path.split("/").pop() }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </span>
+      <!-- Step 4 End -->
+    </span>
+    <div class="ts-text is-center-aligned is-description has-top-spaced-large has-bottom-spaced">
+      © <span>{{year}}</span> <a href="https://leko.moe">Leko</a>
+    </div>
+    <!-- App 區域 End -->
+  </div>
+</body>
+<footer>
+  <script type="module">
+  import { createApp, toRaw } from 'vue';
+
+  const app = createApp({
+    data() {
+      return ({
+        step: 1,
+        steps: ["選擇檔案", "動畫匹配", "集數匹配"],
+
+        path: null,
+        initPath: null,
+        pathFiles: [],
+        selectedFiles: new Set(),
+
+        snUrl: "",
+
+        episodeSeasons: null,
+        season: null,
+
+        fileToEpisode: {},
+        episodeDetection: {},
+        isStep3Loading: true,
+
+        downloadResult: null,
+
+        year: new Date().getFullYear()
+      });
+    },
+    methods: {
+      async getInitPath() {
+        const response = await fetch('/api/lsInitialPath');
+        const data = await response.json();
+        this.path = data;
+        this.initPath = data;
+      },
+
+      async ls() {
+        const response = await fetch('/api/ls?' + new URLSearchParams({
+          path: toRaw(this.path)
+        }))
+        this.pathFiles = await response.json();
+      },
+
+      gotoPath(path) {
+        this.path = path;
+      },
+
+      readableFileSize(filesize) {
+        if (filesize < 1024) {
+          return filesize + " B";
+        } else if (filesize < 1024 * 1024) {
+          return (filesize / 1024).toFixed(2) + " KB";
+        } else if (filesize < 1024 * 1024 * 1024) {
+          return (filesize / 1024 / 1024).toFixed(2) + " MB";
+        } else {
+          return (filesize / 1024 / 1024 / 1024).toFixed(2) + " GB";
+        }
+      },
+
+      toggleFileSelection(){
+        if (this.isFileAllSelected) {
+          this.pathFiles.filter(item => !item.is_dir)
+            .forEach(item => this.selectedFiles.delete(item.path));
+        } else {
+          this.pathFiles.filter(item => !item.is_dir)
+            .forEach(item => this.selectedFiles.add(item.path));
+        }
+      },
+
+      async getEpisodes() {
+        const response = await fetch('/api/episodes?' + new URLSearchParams({
+          sn: this.episodeSn
+        }));
+        this.episodeSeasons = await response.json();
+        this.season = Object.keys(this.episodeSeasons)[0];
+      },
+
+      async downloadDanmu(){
+        this.step = 4;
+        const fileToEpisode = Object.entries(this.fileToEpisode)
+          .filter(([_, episodeSn]) => episodeSn !== "")
+          .map(([file, episodeSn]) => ({video_path: file, sn: episodeSn}));
+        try {
+          const response = await fetch('/api/download', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(fileToEpisode)
+          });
+          const data = await response.json();
+          this.downloadResult = fileToEpisode.map(({video_path, sn}, index) => ({video_path, sn, result: data[index]}));
+        } catch (e) {
+          alert("下載失敗。\n\n" + e);
+        }
+      },
+
+      async getDetectEpisode(){
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            const response = await fetch('/api/episodeDetection', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify([...this.selectedFiles].map(file => file.split('/').pop()))
+            });
+            return ({...toRaw(this.episodeDetection), ...await response.json()});
+          } catch (e) {
+            retries--;
+          }
+        }
+        alert("自動集數偵測失敗，請手動選擇。");
+        return toRaw(this.episodeDetection);
+      },
+
+      episodeMatch(newVal){
+        for(const file of this.selectedFiles) {
+          const filename = file.split('/').pop();
+          if (!newVal.hasOwnProperty(filename))
+            continue;
+          const episode = newVal[filename];
+          const episodeSn = this.episodes.find(_episode => _episode.episode === episode)?.videoSn;
+          if (episodeSn === undefined || episodeSn === null || episodeSn === "") {
+            continue;
+          }
+          this.fileToEpisode[file] = episodeSn;
+        }
+      }
+    },
+    computed: {
+      isFileAllSelected() {
+        const files = this.pathFiles.filter(item => !item.is_dir);
+        return files.length > 0 && files.every(item => this.selectedFiles.has(item.path));
+      },
+
+      episodeSn() {
+        if (parseInt(this.snUrl)) {
+          return parseInt(this.snUrl);
+        }
+
+        try {
+          const url = new URL(this.snUrl);
+          return url.searchParams.has('sn') ? parseInt(url.searchParams.get('sn')) : null;
+        } catch (e) {
+          return null;
+        }
+      },
+
+      episodes(){
+        if (this.episodeSeasons === null || this.season === null || !this.episodeSeasons.hasOwnProperty(this.season)) {
+          return [];
+        }
+
+        return this.episodeSeasons[this.season];
+      },
+
+      seasons(){
+        if (this.episodeSeasons === null) {
+          return [];
+        }
+
+        return Object.keys(this.episodeSeasons);
+      }
+    },
+    watch: {
+      path() {
+        this.ls();
+      },
+
+      step: {
+        async handler(newVal, _){
+          if (newVal === 3) {
+            this.isStep3Loading = true;
+            const detectEpisodeP = this.getDetectEpisode();
+            await this.getEpisodes();
+            this.episodeDetection = await detectEpisodeP;
+            this.isStep3Loading = false;
+          }
+        }
+      },
+
+      episodeDetection: {
+        handler(newVal, _){
+          this.episodeMatch(newVal);
+        },
+        deep: true
+      },
+
+      season(){
+        this.fileToEpisode = {};
+        this.episodeMatch(toRaw(this.episodeDetection));
+      }
+    },
+    async mounted() {
+      await this.getInitPath();
+    }
+  });
+
+  app.mount('#app');
+  window.app = app;
+  </script>
+</footer>

@@ -82,11 +82,12 @@
       <!-- Step 1 -->
       <span v-show="step === 1" v-if="!!path">
         <div class="ts-grid is-stacked has-top-padded">
-          <!-- <div class="column has-vertically-padded">
-            <div class="ts-input">
-              <input type="text" v-model="path">
+          <div class="column has-top-padded">
+            <div class="ts-input is-end-icon">
+              <input type="text" v-model="pathFileFilter">
+              <span class="ts-icon is-filter-icon"></span>
             </div>
-          </div> -->
+          </div>
           <div class="column has-top-padded">
             <div class="ts-box">
               <table class="ts-table is-celled">
@@ -113,7 +114,7 @@
                     </td>
                     <td class="is-collapsed"></td>
                   </tr>
-                  <tr v-for="item in pathFiles" :class='{
+                  <tr v-for="item in filteredPathFiles" :class='{
                     "is-active": selectedFiles.has(item.path)
                   }'>
                     <td class="is-collapsed">
@@ -312,6 +313,7 @@
         initPath: null,
         pathFiles: [],
         selectedFiles: new Set(),
+        pathFileFilter: "",
 
         snUrl: "",
 
@@ -360,10 +362,10 @@
 
       toggleFileSelection(){
         if (this.isFileAllSelected) {
-          this.pathFiles.filter(item => !item.is_dir)
+          this.filteredPathFiles.filter(item => !item.is_dir)
             .forEach(item => this.selectedFiles.delete(item.path));
         } else {
-          this.pathFiles.filter(item => !item.is_dir)
+          this.filteredPathFiles.filter(item => !item.is_dir)
             .forEach(item => this.selectedFiles.add(item.path));
         }
       },
@@ -431,8 +433,15 @@
       }
     },
     computed: {
+      filteredPathFiles() {
+        if (this.pathFileFilter === "") {
+          return this.pathFiles;
+        }
+        return this.pathFiles.filter(item => item.path.split("/").pop().includes(this.pathFileFilter));
+      },
+
       isFileAllSelected() {
-        const files = this.pathFiles.filter(item => !item.is_dir);
+        const files = this.filteredPathFiles.filter(item => !item.is_dir);
         return files.length > 0 && files.every(item => this.selectedFiles.has(item.path));
       },
 

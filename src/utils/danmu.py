@@ -32,7 +32,6 @@ class HttpClient:
             return None
 
         result = response.read().decode('utf-8')
-        print(f'GET {path} -> {response.status}\n{result[:100]}')
         return result
 
     def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:

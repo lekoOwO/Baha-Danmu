@@ -270,17 +270,23 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         m, s = divmod(seconds, 60)
         h, m = divmod(m, 60)
         return f'{h:d}:{m:02d}:{s:02d}.{hundred_ms:d}0'
-
+    
     @staticmethod
-    def write_roll_danmu(output_file: Any, danmu: Dict[str, Any], height: int) -> None:
+    def rgb_to_bgr(rgb: str) -> str:
+        """將 RGB 顏色值轉換為 BGR 顏色值"""
+        assert len(rgb) == 6
+        return rgb[4:] + rgb[2:4] + rgb[:2]
+
+    @classmethod
+    def write_roll_danmu(cls, output_file: Any, danmu: Dict[str, Any], height: int) -> None:
         """寫入滾動彈幕"""
-        danmu_roll = RollDanmu(height=height, color=danmu["color"][1:]) # [1:] 用於去掉顏色值的前面的 # 號
+        danmu_roll = RollDanmu(height=height, color=cls.rgb_to_bgr(danmu["color"][1:])) # [1:] 用於去掉顏色值的前面的 # 號
         output_file.write(danmu_roll.to_str())
 
-    @staticmethod
-    def write_fixed_position_danmu(output_file: Any, danmu: Dict[str, Any], position: DanmuPosition, y_coordinate: int) -> None:
+    @classmethod
+    def write_fixed_position_danmu(cls, output_file: Any, danmu: Dict[str, Any], position: DanmuPosition, y_coordinate: int) -> None:
         """寫入固定位置彈幕（上方或下方）"""
-        danmu_fixed = FixedPositionDanmu(position=position, y_coordinate=y_coordinate, color=danmu["color"][1:]) # [1:] 用於去掉顏色值的前面的 # 號
+        danmu_fixed = FixedPositionDanmu(position=position, y_coordinate=y_coordinate, color=cls.rgb_to_bgr(danmu["color"][1:])) # [1:] 用於去掉顏色值的前面的 # 號
         output_file.write(danmu_fixed.to_str())
 
 @dataclass

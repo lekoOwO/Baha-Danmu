@@ -274,8 +274,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     @staticmethod
     def rgb_to_bgr(rgb: str) -> str:
         """將 RGB 顏色值轉換為 BGR 顏色值"""
-        assert len(rgb) == 6
-        return rgb[4:] + rgb[2:4] + rgb[:2]
+        if len(rgb) == 6:
+            return rgb[4:] + rgb[2:4] + rgb[:2]
+        elif len(rgb) == 8:
+            return rgb[6:] + rgb[4:6] + rgb[2:4] + rgb[:2]
+        else:
+            raise ValueError(f'無效的 RGB 顏色值: {rgb}')
 
     @classmethod
     def write_roll_danmu(cls, output_file: Any, danmu: Dict[str, Any], height: int) -> None:

@@ -9,15 +9,31 @@ from typing import Any, Dict, List, Optional, TypeAlias
 import argparse
 from enum import Enum
 import datetime
+import asyncio
 
 FormattedTime: TypeAlias = str
 
-class HttpClient:
+class IHttpClient:
+    """處理 HTTP 請求的介面"""
+
+    async def get_request(self, path: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
+        """發送 GET 請求"""
+        raise NotImplementedError
+
+    async def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
+        """發送 POST 請求"""
+        raise NotImplementedError
+
+    async def get_request_headers(self) -> Dict[str, str]:
+        """取得請求標頭"""
+        raise NotImplementedError
+
+class HttpClient(IHttpClient):
     """處理 HTTP 請求的類別"""
 
     base_url: str = 'ani.gamer.com.tw'
 
-    def get_request(self, path: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
+    async def get_request(self, path: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
         conn = http.client.HTTPSConnection(base_url if base_url else self.base_url)
         conn.request('GET', path, headers=headers)
         response = conn.getresponse()
@@ -34,7 +50,7 @@ class HttpClient:
         result = response.read().decode('utf-8')
         return result
 
-    def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
+    async def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
         conn = http.client.HTTPSConnection(self.base_url)
         headers['Content-Length'] = str(len(data))
         conn.request('POST', path, body=data, headers=headers)
@@ -50,7 +66,7 @@ class HttpClient:
 
         return response.read().decode('utf-8')
     
-    def get_request_headers(self) -> Dict[str, str]:
+    async def get_request_headers(self) -> Dict[str, str]:
         """取得請求標頭"""
         return {
             'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
@@ -160,7 +176,7 @@ class Episode:
 class DanmuHandler:
     """處理彈幕資料和檔案生成的類別"""
 
-    http_client: HttpClient
+    http_client: IHttpClient
 
     @staticmethod
     def get_ass_template(title="彈幕"):
@@ -182,11 +198,11 @@ Style: Default,Sarasa Gothic TC,24,&H66FFFFFF,&H66FFFFFF,&H66000000,&H66000000,1
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 '''.strip() + "\n"
 
-    def download_danmu(self, sn: int, output_filepath: str, anime_info: AnimeInfo) -> None:
+    async def download_danmu(self, sn: int, output_filepath: str, anime_info: AnimeInfo) -> None:
         """下載彈幕並儲存為 .ass 檔案"""
-        headers = self.http_client.get_request_headers()
+        headers = await self.http_client.get_request_headers()
         data = urlencode({'sn': str(sn)})
-        response = self.http_client.post_request('/ajax/danmuGet.php', data, headers)
+        response = await self.http_client.post_request('/ajax/danmuGet.php', data, headers)
 
         if not response:
             raise Exception(f'[DanmuHandler] 彈幕下載失敗 (sn: {sn})')
@@ -297,33 +313,37 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 class AnimeInfoFetcher:
     """處理動畫資訊擷取的類別"""
 
-    http_client: HttpClient
+    http_client: IHttpClient
 
-    def get_anime_info(self, sn: int) -> AnimeInfo:
+    async def get_anime_info(self, sn: int) -> AnimeInfo:
         """取得動畫名稱和集數資訊"""
-        headers = self.http_client.get_request_headers()
-        response = self.http_client.get_request(f'/animeVideo.php?sn={sn}', headers)
+        headers = await self.http_client.get_request_headers()
+        response = await self.http_client.get_request(f'/animeVideo.php?sn={sn}', headers)
 
         if not response:
             raise Exception(f'[AnimeInfoFetcher] 獲取資訊失敗 (sn: {sn})')
+        
+        # Get title tag
+        title_tag = re.search(r'<title>(.+)</title>', response)
+        title = title_tag.group(1) if title_tag else None
 
-        anime_name_match = re.search(r'(.+)\s\[.+\]', response)
-        episode_match = re.search(r'.+\s\[(.+)\]', response)
-
-        if not anime_name_match and not episode_match:
+        if not title:
             raise Exception(f'[AnimeInfoFetcher] 無法獲取動畫名稱和集數 (sn: {sn})')
         
-        assert anime_name_match and episode_match
+        # Get anime name and episode
+        m = re.search(r"^(.+?)\s\[(.+)\].+?$", title)
+        anime_name = m.group(1) if m else None
+        episode = m.group(2) if m else None
 
-        anime_name = anime_name_match.group(1)
-        episode = episode_match.group(1)
+        if not anime_name or not episode:
+            raise Exception(f'[AnimeInfoFetcher] 無法獲取動畫名稱和集數 (sn: {sn})')
 
         return AnimeInfo(name=anime_name, episode=episode)
     
-    def get_anime_episodes(self, sn: int) -> dict[str, list[Episode]]:
+    async def get_anime_episodes(self, sn: int) -> dict[str, list[Episode]]:
         """取得動畫的所有集數資訊"""
-        headers = self.http_client.get_request_headers()
-        response = self.http_client.get_request(f'/anime/v1/video.php?videoSn={sn}', headers, base_url='api.gamer.com.tw')
+        headers = await self.http_client.get_request_headers()
+        response = await self.http_client.get_request(f'/anime/v1/video.php?videoSn={sn}', headers, base_url='api.gamer.com.tw')
 
         if not response:
             raise Exception(f'[AnimeInfoFetcher] 獲取資訊失敗 (sn: {sn})')
@@ -334,16 +354,20 @@ class AnimeInfoFetcher:
 
 class DanmuDownloader:
     """處理彈幕下載的類別，統籌管理 DanmuHandler 和 AnimeInfoFetcher"""
+    _http_client: IHttpClient
+    danmu_handler: DanmuHandler
+    anime_info_fetcher: AnimeInfoFetcher
 
-    _http_client = HttpClient()
-    danmu_handler = DanmuHandler(http_client=_http_client)
-    anime_info_fetcher = AnimeInfoFetcher(http_client=_http_client)
+    def __init__(self, http_client: Optional[IHttpClient] = None):
+        self._http_client = http_client if http_client else HttpClient()
+        self.danmu_handler = DanmuHandler(self._http_client)
+        self.anime_info_fetcher = AnimeInfoFetcher(self._http_client)
 
-    def download_comments(self, sn: int, output_dir: str, filename_format: str) -> None:
+    async def download_comments(self, sn: int, output_dir: str, filename_format: str) -> None:
         """下載彈幕並儲存為檔案"""
-        anime_info = self.anime_info_fetcher.get_anime_info(sn)
+        anime_info = await self.anime_info_fetcher.get_anime_info(sn)
         output_filepath = os.path.join(output_dir, filename_format.format(anime_name=anime_info.name, episode=anime_info.episode))
-        self.danmu_handler.download_danmu(sn, output_filepath, anime_info)
+        await self.danmu_handler.download_danmu(sn, output_filepath, anime_info)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="下載彈幕並儲存為檔案")
@@ -354,4 +378,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     downloader = DanmuDownloader()
-    downloader.download_comments(args.sn, args.output_dir, args.filename_format)
+    asyncio.run(downloader.download_comments(args.sn, args.output_dir, args.filename_format))

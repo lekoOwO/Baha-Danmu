@@ -1,4 +1,6 @@
+import asyncio
 from dataclasses import dataclass
+from typing import Any, Coroutine
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse 
@@ -42,17 +44,20 @@ async def POST_download(data: list[DownloadBody]):
     for item in data:
         if not utils.path.is_valid_video_path(item.video_path):
             raise HTTPException(status_code=404, detail="Invalid path")
-        
-    result: list[bool] = []
-    
-    downloader = utils.danmu.DanmuDownloader()
-    for item in data:
+
+    http_client = utils.http_client.AsyncHttpClient()
+    downloader = utils.danmu.DanmuDownloader(http_client)
+
+    async def download_item(item: DownloadBody) -> bool:
         try:
             subtitle_path = pathlib.Path(item.video_path).with_suffix(".danmu.ass").absolute()
-            downloader.download_comments(item.sn, subtitle_path.parent.as_posix(), subtitle_path.name)
-            result.append(True)
+            await downloader.download_comments(item.sn, subtitle_path.parent.as_posix(), subtitle_path.name)
+            return True
         except:
-            result.append(False)
+            return False
+        
+    tasks = [download_item(item) for item in data]
+    result = await asyncio.gather(*tasks)
 
     return result
 

@@ -2,8 +2,9 @@ import json
 import os
 import random
 import re
-import http.client
+import urllib.error
 from urllib.parse import urlencode, urlparse
+import urllib.request
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, TypeAlias
 import argparse
@@ -39,44 +40,40 @@ class HttpClient(IHttpClient):
         return urlparse(url).hostname
 
     async def get_request(self, path: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
-        hostname = self.hostname(base_url if base_url else self.base_url)
-        if hostname is None:
-            raise ValueError(f'Invalid URL: {base_url}')
-        conn = http.client.HTTPSConnection(hostname)
-        conn.request('GET', path, headers=headers)
-        response = conn.getresponse()
+        url = (base_url if base_url else self.base_url) + path
+        request = urllib.request.Request(url, headers=headers, method='GET')
 
-        if response.status == 302 or response.status == 301:
-            new_location = response.getheader('Location')
-            return self.get_request(
-               new_location, # type: ignore
-            headers=headers) 
-
-        if response.status != 200:
-            return None
-
-        result = response.read().decode('utf-8')
-        return result
+        try:
+            with urllib.request.urlopen(request) as response:
+                if response.status in [301, 302]:
+                    new_location = response.getheader('Location')
+                    return await self.get_request(new_location, headers=headers)
+                return response.read().decode('utf-8')
+        except urllib.error.HTTPError as e:
+            print(f"HTTPError: {e.code} {e.reason}")
+        except urllib.error.URLError as e:
+            print(f"URLError: {e.reason}")
+        
+        return None
 
     async def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
-        hostname = self.hostname(self.base_url)
-        if hostname is None:
-            raise ValueError(f'Invalid URL: {self.base_url}')
-        conn = http.client.HTTPSConnection(hostname)
-        headers['Content-Length'] = str(len(data))
-        conn.request('POST', path, body=data, headers=headers)
-        response = conn.getresponse()
+        url = self.base_url + path
+        data_encoded = data.encode('utf-8')
+        request = urllib.request.Request(url, data=data_encoded, headers=headers, method='POST')
 
-        if response.status == 302 or response.status == 301:
-            return self.post_request(
-                response.getheader('Location'),  # type: ignore
-                data=data, headers=headers)
+        try:
+            with urllib.request.urlopen(request) as response:
+                if response.status in [301, 302]:
+                    new_location = response.getheader('Location')
+                    return await self.post_request(new_location, data=data, headers=headers)
+                return response.read().decode('utf-8')
+        except urllib.error.HTTPError as e:
+            print(f"HTTPError: {e.code} {e.reason}")
+        except urllib.error.URLError as e:
+            print(f"URLError: {e.reason}")
+        
+        return None
 
-        if response.status != 200:
-            return None
-
-        return response.read().decode('utf-8')
-    
     async def get_request_headers(self) -> Dict[str, str]:
         """取得請求標頭"""
         return {
@@ -84,7 +81,7 @@ class HttpClient(IHttpClient):
             'Origin': 'https://ani.gamer.com.tw',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36'
         }
-
+    
 @dataclass
 class DanmuTimePosition:
     """彈幕的時間和位置資訊"""

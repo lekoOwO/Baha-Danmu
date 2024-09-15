@@ -30,9 +30,9 @@ async def GET_ls(path: str):
 @router.get("/episodes")
 async def GET_episodes(sn: int):
     anime_info_fetcher = utils.danmu.AnimeInfoFetcher(
-        utils.danmu.HttpClient(),
+        utils.http_client.AsyncHttpClient(),
     )
-    return anime_info_fetcher.get_anime_episodes(sn)
+    return await anime_info_fetcher.get_anime_episodes(sn)
 
 @dataclass
 class DownloadBody:

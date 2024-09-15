@@ -8,8 +8,11 @@ class AsyncHttpClient(IHttpClient):
     base_url: str = 'https://ani.gamer.com.tw'
 
     async def get_request(self, path: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
+        if base_url is not None and not base_url.startswith("http"):
+            base_url = f"https://{base_url}"
+            
         url = httpx.URL(base_url if base_url else self.base_url).join(path)
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=headers)
 

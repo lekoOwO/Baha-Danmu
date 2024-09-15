@@ -3,7 +3,7 @@ import os
 import random
 import re
 import http.client
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, TypeAlias
 import argparse
@@ -15,6 +15,8 @@ FormattedTime: TypeAlias = str
 
 class IHttpClient:
     """處理 HTTP 請求的介面"""
+    
+    base_url: str = 'https://ani.gamer.com.tw'
 
     async def get_request(self, path: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
         """發送 GET 請求"""
@@ -31,10 +33,16 @@ class IHttpClient:
 class HttpClient(IHttpClient):
     """處理 HTTP 請求的類別"""
 
-    base_url: str = 'ani.gamer.com.tw'
+    @staticmethod
+    def hostname(url: str) -> str | None:
+        """取得 URL 的主機名稱"""
+        return urlparse(url).hostname
 
     async def get_request(self, path: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
-        conn = http.client.HTTPSConnection(base_url if base_url else self.base_url)
+        hostname = self.hostname(base_url if base_url else self.base_url)
+        if hostname is None:
+            raise ValueError(f'Invalid URL: {base_url}')
+        conn = http.client.HTTPSConnection(hostname)
         conn.request('GET', path, headers=headers)
         response = conn.getresponse()
 
@@ -51,7 +59,10 @@ class HttpClient(IHttpClient):
         return result
 
     async def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
-        conn = http.client.HTTPSConnection(self.base_url)
+        hostname = self.hostname(self.base_url)
+        if hostname is None:
+            raise ValueError(f'Invalid URL: {self.base_url}')
+        conn = http.client.HTTPSConnection(hostname)
         headers['Content-Length'] = str(len(data))
         conn.request('POST', path, body=data, headers=headers)
         response = conn.getresponse()
@@ -343,7 +354,7 @@ class AnimeInfoFetcher:
     async def get_anime_episodes(self, sn: int) -> dict[str, list[Episode]]:
         """取得動畫的所有集數資訊"""
         headers = await self.http_client.get_request_headers()
-        response = await self.http_client.get_request(f'/anime/v1/video.php?videoSn={sn}', headers, base_url='api.gamer.com.tw')
+        response = await self.http_client.get_request(f'/anime/v1/video.php?videoSn={sn}', headers, base_url='https://api.gamer.com.tw')
 
         if not response:
             raise Exception(f'[AnimeInfoFetcher] 獲取資訊失敗 (sn: {sn})')

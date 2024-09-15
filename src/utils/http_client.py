@@ -20,8 +20,8 @@ class AsyncHttpClient(IHttpClient):
 
             return response.text
 
-    async def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
-        url = httpx.URL(self.base_url).join(path)
+    async def post_request(self, path: str, data: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
+        url = httpx.URL(base_url if base_url else self.base_url).join(path)
 
         async with httpx.AsyncClient() as client:
             response = await client.post(url, content=data, headers=headers)

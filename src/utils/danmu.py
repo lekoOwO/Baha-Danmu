@@ -23,7 +23,7 @@ class IHttpClient:
         """發送 GET 請求"""
         raise NotImplementedError
 
-    async def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
+    async def post_request(self, path: str, data: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
         """發送 POST 請求"""
         raise NotImplementedError
 
@@ -56,8 +56,8 @@ class HttpClient(IHttpClient):
         
         return None
 
-    async def post_request(self, path: str, data: str, headers: Dict[str, str]) -> Optional[str]:
-        url = self.base_url + path
+    async def post_request(self, path: str, data: str, headers: Dict[str, str], base_url: Optional[str] = None) -> Optional[str]:
+        url = (base_url if base_url else self.base_url) + path
         data_encoded = data.encode('utf-8')
         request = urllib.request.Request(url, data=data_encoded, headers=headers, method='POST')
 
